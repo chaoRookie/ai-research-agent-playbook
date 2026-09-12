@@ -2,11 +2,11 @@
 
 **让多个 agent 走不同的路，让结论经得起独立检查。**
 
-面向复杂研究任务的中文多智能体编排 skill：九个操作模式、四类角色提示词、预算约束、证据模板、4 个并发槽位下的完整运行配方，以及一个**不带任何 LLM 依赖、可离线跑通**的编排器——它用代码强制执行角色隔离、预算账本、交叉授粉限额和双重审查门。
+面向复杂研究任务的中文多智能体编排 skill：九个操作模式、四类角色提示词、预算约束、证据模板、4 个并发槽位下的完整运行配方，以及一个**不带任何 LLM 依赖、可离线跑通**的编排器——它提供路径白名单、预算准入、种子校验和双重审查门，实际模型调用与上下文隔离由宿主负责。
 
 来源是 OpenAI 2026 年 9 月公开的万级 agent 攻坚流程。本仓库只提炼**工作是怎么被组织的**，不讨论那个数学结论本身。
 
-> Inspired by OpenAI's published research workflow, this Chinese-language skill turns multi-agent exploration into a bounded, auditable process. It ships role prompts, evidence records, a small-team execution recipe, and a stdlib-only orchestrator that mechanically enforces isolation and verification gates. The orchestrator calls no LLM API — it enforces the invariants, your host supplies the thinking. All parameters are author-proposed defaults, not official settings or proven optima.
+> Inspired by OpenAI's published research workflow, this Chinese-language skill turns multi-agent exploration into a bounded, auditable process. It ships role prompts, evidence records, a small-team execution recipe, and a stdlib-only orchestrator that checks mediated file access and verification gates. The orchestrator calls no LLM API — it enforces the invariants, your host supplies the thinking. All parameters are author-proposed defaults, not official settings or proven optima.
 
 ## 快速使用
 
@@ -43,7 +43,7 @@ python3 -m orchestrator --help     # run / status / checkpoint / prompt
 | 预算账本 | 超出 `max_calls` / 并发 / 时间 / 未授权付费时，在准入前拒绝 |
 | 交叉授粉限额（P3/P6） | 种子卡缺证据状态或超过上限即构造失败；`proposed` 不得升格 |
 | 独立验证（P8） | 只有技术验证**和**对齐审查都 pass、且都针对当前候选版本哈希，才允许标 `verified` |
-| 检查点（P7） | 换模型后旧证据被标记为需重验，不会静默沿用 |
+| 检查点（P7） | 换模型后记录待重验标记；宿主必须检查标记并执行重验 |
 
 已知局限写在 [验证记录](docs/validation.md) 里，包括：路径白名单不是安全沙箱、子进程检查与主进程同权限、无真实并发、也没有任何“多 agent 优于单 agent”的性能对照。
 
@@ -66,6 +66,7 @@ python3 -m orchestrator --help     # run / status / checkpoint / prompt
 - [SKILL.md](SKILL.md)：技能入口、九模式参数、规模降级映射、七条反模式与停止条件。
 - [orchestrator/](orchestrator/)：stdlib-only 编排器，`python3 -m orchestrator demo` 可直接跑通。
 - [角色提示词](templates/prompts.md)：探索、综合、技术验证、目标对齐。
+- [运行决策](references/operating-decisions.md)：预算不足、证据冲突、实例隔离与恢复处理。
 - [记录模板](templates/records.md)：任务契约、候选证据、检查点。
 - [最小配置](docs/minimal-setup.md)：调用数、并发数、目录与验收示例。
 - [来源说明](references/source-notes.md)：原文事实、公开信息缺口与本仓库建议的界线。
@@ -73,11 +74,11 @@ python3 -m orchestrator --help     # run / status / checkpoint / prompt
 
 ## 来源与适用范围
 
-参考 [OpenAI: On the Navier–Stokes Millennium Prize Problem](https://openai.com/index/navier-stokes-solution/)。这是独立的方法论整理，与 OpenAI 无隶属或背书关系。九模式分类、四类角色、降级映射与全部参数默认值由本仓库提出，**不构成对原系统的复现**，原文也未披露分组策略、提示词、交换频率或预算规则。
+参考 [OpenAI: On the Navier–Stokes Millennium Prize Problem](https://openai.com/index/navier-stokes-solution/)。这是独立的方法论整理，与 OpenAI 无隶属或背书关系。九模式分类、四类角色、降级映射与全部参数默认值由本仓库提出，**不构成对原系统的复现**，原文披露了按问题变体分组，但未披露完整分组策略、提示词、交换频率或预算规则。
 
 页面公开的规模（峰值约 10,000 并发 agent、270 万条消息、约 1,300 亿输出 token、约 88 小时出结果加 17 小时形式化验证）是本仓库的类比参照，不是可复现的目标，更不是推荐规模。
 
-重点是 AI 使用方法，不展开数学问题的结论评判。本版本未取得交接中提及的原仓库压缩包，因此不声称继承旧提交历史。
+重点是 AI 使用方法，不展开数学问题的结论评判。
 
 ## License
 

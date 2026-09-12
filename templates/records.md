@@ -1,6 +1,6 @@
 # 任务、证据与检查点
 
-可直接复制 YAML 到运行目录。格式是人工/agent 交接约定，不是自动调度协议。
+可直接复制 YAML 到运行目录。格式是人工/agent 交接约定，不是自动调度协议。CLI 仅解析 JSON，初始化时使用 [contract.example.json](contract.example.json)。
 
 ## 任务契约
 

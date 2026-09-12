@@ -1,0 +1,22 @@
+{
+  "id": "sorting-001",
+  "version": 1,
+  "goal": "返回与输入具有相同元素及重复次数的升序整数列表",
+  "constraints": [
+    "不修改输入",
+    "不丢失元素"
+  ],
+  "acceptance": [
+    "与可信排序基准比较，覆盖空列表、重复数、负数、逆序及固定随机种子输入",
+    "只有正确性通过后，才在同一环境与输入集上测量耗时；未测量不得声称更快"
+  ],
+  "non_goals": [
+    "不为其他数据类型保证正确性"
+  ],
+  "budget": {
+    "max_calls": 8,
+    "max_concurrency": 4,
+    "max_minutes": 30,
+    "paid_api_authorized": false
+  }
+}

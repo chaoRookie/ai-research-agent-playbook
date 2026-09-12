@@ -23,13 +23,13 @@ V 可以在一次有界调用内验证多个候选，但应优先进行便宜的
 
 ```text
 run/
-  contract.yaml
+  contract.json
   groups/a/
   groups/b/
   synthesis/seeds.yaml
   verification/
   alignment/
-  checkpoint.yaml
+  checkpoint.json
   final.md
 ```
 
@@ -43,17 +43,19 @@ run/
 
 ## 用编排器跑同一套流程
 
-上面的表格是手工会话配方。要让隔离、预算和双重审查门**由代码拒绝**而不是靠自觉，用仓库内的编排器（无第三方依赖、不联网、不调用任何模型）：
+上面的表格是手工会话配方。要检查受管理的路径访问、预算准入和双重审查记录，用仓库内的编排器（无第三方依赖、不联网、不调用任何模型）：
 
 ```bash
 python3 -m orchestrator selftest            # 校验五条不变量；全绿退出 0
 python3 -m orchestrator demo                # 端到端跑一遍本页的验收场景
-python3 -m orchestrator run --contract run/contract.yaml
-python3 -m orchestrator status   --run run/
-python3 -m orchestrator checkpoint --run run/
+python3 -m orchestrator run --contract templates/contract.example.json --run-dir run/manual
+python3 -m orchestrator status   --run run/manual
+python3 -m orchestrator checkpoint --run run/manual
 python3 -m orchestrator prompt --role technical_verifier --method invariant-first
 ```
 
 `demo` 会把本页讲的三件事实际演一遍，而不只是打印说明：探索组 A 读 `groups/b/` 被**拒绝**；候选 `A-v1` 在 `[2, 1, 2]` 上被**否证**；用单份通过的审查或过期版本哈希晋升候选时被**拒绝**。它不思考——模型由宿主提供，编排器只负责让越权和不合格被发现。
+
+`run` 只初始化契约与检查点，不启动模型或执行研究。上面的命令可从干净克隆的仓库根目录直接执行；JSON 示例可按任务修改，每个新实验使用新的 `--run-dir`，避免覆盖已有状态。人工 YAML 记录模板不能直接传给该 CLI。
 
 实测范围与局限见 [验证记录](validation.md)；`orchestrator` 是路径白名单，不是安全沙箱，子进程检查与主进程同权限。

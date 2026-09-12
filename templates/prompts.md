@@ -39,19 +39,19 @@
 
 ## 角色边界之外：由编排器强制什么
 
-上面的提示词是**约定**，不是访问控制——模型可以无视它。要让它变成限制，需要宿主或代码来拒绝越权操作。本仓库的 `orchestrator/` 可离线强制以下五条，并可被 `python3 -m orchestrator selftest` 验证：
+上面的提示词是**约定**，不是访问控制——模型可以无视它。要让它变成限制，需要宿主或代码来拒绝越权操作。本仓库的 `orchestrator/` 提供以下离线检查，并可被 `python3 -m orchestrator selftest` 验证：
 
-1. `AccessPolicy`：每个角色实例只放行白名单路径，拒绝 `..`、绝对路径和指向 run 目录外的符号链接。
+1. `AccessPolicy`：每个角色实例只放行白名单路径，拒绝解析后逃出运行目录或不在白名单中的访问；不禁止白名单内的绝对路径，也不能阻止绕过本接口的访问。
 2. `Ledger`：`max_calls` / `max_concurrency` / `max_minutes` / `paid_api_authorized` 在准入前检查。
 3. `SeedCard`：超过每组限额或缺证据状态的种子直接构造失败；`proposed` 不得升格为 `verified`。
 4. `is_verified()`：技术验证与对齐审查必须双 pass，且两者记录的版本哈希等于候选当前哈希。
-5. `RunState.mark_model_change()`：置位后旧审查结论需要重验，不会静默复用。
+5. `RunState.mark_model_change()`：记录重验需求；宿主必须检查 `needs_reverification` 并执行重验，不能仅凭 `is_verified()` 发布结论。
 
-提示词负责让 agent 愿意配合；这些检查负责让不配合也会被发现。
+独立实例、报告真实性和实际重验仍由宿主保证；这些检查不能证明模型遵守了所有提示词。
 
 ## 编排伪代码
 
-手工会话或宿主 agent 工具按这个骨架推进；括号里是每一步的停止条件。`orchestrator/runner.py` 针对同一骨架做了可执行实现。
+手工会话或宿主 agent 工具按这个骨架推进；括号里是每一步的停止条件。`orchestrator/demo.py` 提供固定离线演示；本仓库没有自动调度模型的 `runner.py`，以下 spawn/run 需要宿主实现。
 
 ```text
 contract = freeze(goal, constraints, acceptance, budget)   # 先冻结，后花钱
@@ -65,10 +65,10 @@ for g in groups:
     label_evidence(g.artifacts)                            # 无定位者 → proposed/inconclusive
 
 # 第 2 轮起：有界交换
-while ledger.remaining_calls >= reserve_for_review:        # 预留不足 → 停止探索
+while ledger.remaining_calls >= 1 + len(groups) + reserve_for_review:        # 预留不足 → 停止探索
     seeds = spawn_synthesizer(may_read=[contract] + group_dirs)
                     .distill(max_per_group=2, require_evidence_ref=True)
-    if seeds.is_empty_for(2 rounds): break                 # 连续 2 轮无新证据 → 停用线索
+    if no_new_evidence_for(2 rounds): break                 # 连续 2 轮无新证据 → 停用线索
     for g in groups:
         g.receive(seeds.for_group(g))                      # proposed 标签必须保留
         g.artifacts += run(g, budget=reallocate(evidence)) # P4：按有效证据，不按消息数
@@ -79,6 +79,8 @@ tech  = spawn_technical_verifier(may_read=[contract, candidate, evidence])
 align = spawn_alignment_reviewer(may_read=[contract, candidate, tech_report])
         .diff_against_original()                           # 量词/假设/指标有没有被偷换
 
+assert distinct_instances(author, synthesizer, tech, align)  # 由宿主核实
+assert not pending_reverification(candidate)               # 不能只看双 pass
 assert tech.verdict == PASS and align.verdict == PASS
 assert tech.version_hash == candidate.hash == align.version_hash   # 否则旧审查作废
 # 任一 FAIL/INCONCLUSIVE → 在剩余预算内修复并重验受影响部分，或交付未决项
